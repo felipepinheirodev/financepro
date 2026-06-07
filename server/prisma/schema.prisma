@@ -1,0 +1,249 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id                  String   @id @default(uuid())
+  name                String
+  type                String   // CHECKING, SAVINGS, WALLET
+  initialBalanceCents Int
+  color               String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  transactions        Transaction[]
+  creditCards         CreditCard[]
+}
+
+model CreditCard {
+  id         String   @id @default(uuid())
+  name       String
+  accountId  String
+  account    Account  @relation(fields: [accountId], references: [id])
+  limitCents Int
+  closingDay Int
+  dueDay     Int
+  color      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  transactions Transaction[]
+}
+
+model Category {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  color     String   @default("#6B7280")
+  icon      String   @default("Tag")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  transactions Transaction[]
+}
+
+model RecurringTemplate {
+  id              String   @id @default(uuid())
+  description     String
+  amountCents     Int
+  type            String   // INCOME, EXPENSE
+  expenseType     String?  // FIXA, VARIAVEL (only for EXPENSE)
+  categoryId      String?
+  accountId       String?
+  creditCardId    String?
+  frequency       String   @default("MONTHLY") // MONTHLY, WEEKLY, etc.
+  dayOfMonth      Int?     // Day of the month for recurring
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  transactions    Transaction[]
+}
+
+model Transaction {
+  id                   String   @id @default(uuid())
+  accountId            String
+  account              Account  @relation(fields: [accountId], references: [id])
+  creditCardId         String?
+  creditCard           CreditCard? @relation(fields: [creditCardId], references: [id])
+  categoryId           String?
+  category_rel         Category?   @relation(fields: [categoryId], references: [id])
+  recurringTemplateId  String?
+  recurringTemplate    RecurringTemplate? @relation(fields: [recurringTemplateId], references: [id])
+  description          String
+  amountCents          Int
+  type                 String   // INCOME, EXPENSE
+  category             String   // Legacy string category
+  expenseType          String?  // FIXA, VARIAVEL
+  date                 String
+  status               String   // PENDING, PAID
+  
+  isInstallment      Boolean  @default(false)
+  installmentId      String?
+  currentInstallment Int?
+  totalInstallments  Int?
+  interestRate       Float?
+  
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model PasswordVaultEntry {
+  id                String   @id @default(uuid())
+  bankName          String
+  login             String?
+  encryptedPassword String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+// ========== 3D PRINTING FILAMENT INVENTORY ==========
+
+model Filament {
+  id            String   @id @default(uuid())
+  brand         String
+  material      String   // PLA, PLA+, PETG, ABS, TPU, etc.
+  color         String
+  colorHex      String?  // Hex color for visual swatch
+  weightGrams   Int      @default(1000)
+  diameterMm    Float    @default(1.75)
+  printTempMin  Int?
+  printTempMax  Int?
+  bedTempMin    Int?
+  bedTempMax    Int?
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  purchases     FilamentPurchase[]
+  stocks        FilamentStock[]
+  jobs          PrintJob[]
+}
+
+model FilamentPurchase {
+  id              String   @id @default(uuid())
+  filamentId      String
+  filament        Filament @relation(fields: [filamentId], references: [id], onDelete: Cascade)
+  store           String
+  quantity        Int      @default(1)
+  unitPriceCents  Int
+  totalPriceCents Int
+  purchaseDate    String   // YYYY-MM-DD
+  link            String?
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model FilamentStock {
+  id              String   @id @default(uuid())
+  filamentId      String
+  filament        Filament @relation(fields: [filamentId], references: [id], onDelete: Cascade)
+  type            String   @default("SAIDA") // ENTRADA, SAIDA, PERDA
+  quantityInStock Int      @default(0)
+  usedGrams       Int      @default(0)
+  status          String   @default("DISPONIVEL") // DISPONIVEL, EM_USO, ACABOU
+  location        String?
+  notes           String?
+  lastUpdated     DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Supplier {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  url       String?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ========== MÓDULO 3D PRINTING (MVP + PRONTO PARA SAAS) ==========
+
+model Printer {
+  id          String     @id @default(uuid())
+  tenantId    String     @default("default-tenant") // Valor fixo para o MVP
+  name        String     // Ex: Anycubic Kobra 3 v2, Bambu Lab X1C
+  powerWatts  Int        @default(350)              // Consumo médio para cálculo de energia
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  jobs        PrintJob[]
+}
+
+model Accessory {
+  id          String       @id @default(uuid())
+  tenantId    String       @default("default-tenant")
+  name        String       // Ex: Bocal E27, Fio paralelo, Saquinho kraft
+  costCents   Int          // Custo unitário em centavos
+  stock       Int          @default(0)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  products    ProductBom[]
+}
+
+model PrintJob {
+  id              String       @id @default(uuid())
+  tenantId        String       @default("default-tenant")
+  printerId       String
+  printer         Printer      @relation(fields: [printerId], references: [id])
+  filamentId      String
+  filament        Filament     @relation(fields: [filamentId], references: [id])
+  
+  pieceName       String       // Nome do projeto/peça (Ex: Placa Alvaro)
+  quantity        Int          @default(1)
+  gramsPerPiece   Int          // Peso estimado no fatiador
+  totalGrams      Int          // quantity * gramsPerPiece
+  printTimeHours  Float        // Tempo estimado de impressão
+  
+  // Parâmetros de fatiamento salvos como "Preset" ideal deste carretel
+  nozzleTemp      Int
+  bedTemp         Int
+  speedMmS        Int?
+  retractionMm    Float?
+
+  status          String       @default("PENDING") // PENDING, COMPLETED, FAILED
+  energyCostCents Int          @default(0)
+  filamentCostCents Int        @default(0)
+  
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  products    ProductBom[]
+}
+
+model Product {
+  id              String       @id @default(uuid())
+  tenantId        String       @default("default-tenant")
+  name            String       // Ex: Luminária George, Kit Placas Festa
+  salePriceCents  Int          // Preço de venda final
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  components      ProductBom[]
+}
+
+// Tabela intermediária de composição (Bill of Materials)
+model ProductBom {
+  id          String     @id @default(uuid())
+  productId   String
+  product     Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  
+  jobId       String?    // Se o componente depender de uma peça impressa
+  job         PrintJob?  @relation(fields: [jobId], references: [id])
+  
+  accessoryId String?    // Se o componente for um acessório físico
+  accessory   Accessory? @relation(fields: [accessoryId], references: [id])
+  
+  quantity    Int        @default(1) // Quantidade usada na composição
+}
+
