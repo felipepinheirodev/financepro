@@ -109,7 +109,6 @@ Variáveis principais:
 - `AI_PROVIDER_EXTRACTION`: provider para extração de extratos/imagens.
 - `AI_PROVIDER_CATEGORIZATION`: provider para categorização.
 - `AI_PROVIDER_CLASSIFICATION`: provider para classificação fixa/variável.
-- `AI_DEMO_MODE`: modo local para screenshots; simula status e métricas de IA sem habilitar chamadas reais sem chave.
 - `ALLOWED_ORIGINS`: origens permitidas pelo CORS, separadas por vírgula.
 - `HOST`: host do backend. O padrão recomendado local é `127.0.0.1`.
 - `PORT`: porta do backend.
@@ -252,22 +251,6 @@ Nessa tela é possível:
 - Limpar o histórico local de consumo.
 
 As API keys não são exibidas nem editadas no frontend. Elas devem ficar no `server/.env`.
-
-### Modo Demo de IA
-
-Para screenshots ou apresentação do projeto antes de receber todas as credenciais, é possível ativar:
-
-```env
-AI_DEMO_MODE="true"
-```
-
-Com esse modo ligado, a tela de IA pode exibir Alibaba/Qwen como `demo ativo` e incluir métricas fictícias de consumo para comparação visual. O modo demo não cria uma credencial real e não deve ser usado para validar qualidade, custo ou latência de uma chamada real.
-
-Antes de publicar ou apresentar como integração real, volte para:
-
-```env
-AI_DEMO_MODE="false"
-```
 
 ### Arquivos Locais de IA
 
